@@ -11,27 +11,33 @@ class MoviesController < ApplicationController
   end
 
   def index
-   if(!params.has_key?(:sort) && !params.has_key?(:ratings))
-      if(session.has_key?(:sort) || session.has_key?(:ratings))
-        redirect_to movies_path(:sort=>session[:sort], :ratings=>session[:ratings])
-      end
+    @all_ratings = Movie.order(:rating).select(:rating).map(&:rating).uniq
+    @checked_ratings = check
+    @checked_ratings.each do |rating|
+      params[rating] = true
     end
-    @sort = params.has_key?(:sort) ? (session[:sort] = params[:sort]) : session[:sort]
-    @all_ratings = Movie.all_ratings.keys
-    @ratings = params[:ratings]
-    if(@ratings != nil)
-      ratings = @ratings.keys
-      session[:ratings] = @ratings
-    else
-      if(!params.has_key?(:commit) && !params.has_key?(:sort))
-        ratings = Movie.all_ratings.keys
-        session[:ratings] = Movie.all_ratings
-      else
-        ratings = session[:ratings].keys
-      end
-    end
+
+    @sort = params[:sort] || session[:sort] 
+    session[:ratings] = session[:ratings] || {'G'=>'','PG'=>'','PG-13'=>'','R'=>''}
+    @t_param = params[:ratings] || session[:ratings]
+    session[:sort] = @sort
+    session[:ratings] = @t_param 
     @movies = Movie.where(rating: session[:ratings].keys).order(session[:sort])
-    @mark  = ratings
+
+    if (params[:ratings].nil? && !session[:ratings].nil?) || (params[:order].nil? && !session[:order].nil?)
+      redirect_to movies_path("ratings" => session[:ratings], "order" => session[:order])
+    elsif !params[:ratings].nil? || !params[:order].nil?
+      if !params[:ratings].nil?
+        array_ratings = params[:ratings].keys
+        return @movies = Movie.where(rating: array_ratings).order(session[:order])
+      else
+        return @movies = Movie.all.order(session[:order])
+      end
+    elsif !session[:ratings].nil? || !session[:order].nil?
+      redirect_to movies_path("ratings" => session[:ratings], "order" => session[:order])
+    else
+      return @movies = Movie.all
+    end
   end
 
   def new
